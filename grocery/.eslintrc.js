@@ -4,15 +4,12 @@ module.exports = {
   parser: '@babel/eslint-parser',
   parserOptions: {
     requireConfigFile: false,
-    babelOptions: {
-      presets: ['module:metro-react-native-babel-preset'],
-    },
   },
   env: {
-    'jest/globals': true,
+    browser: true,
+    node: true,
   },
-  plugins: ['jest'],
   rules: {
-    // custom rules here
+    // Add any custom rules here
   },
 };

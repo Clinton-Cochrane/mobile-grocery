@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
 import { View, TextInput, Button, Text } from 'react-native';
 import auth from '@react-native-firebase/auth';
+import { NavigationProp } from '@react-navigation/native';
 
-export default function LoginScreen() {
+interface SignUpScreenProps {
+  navigation: NavigationProp<any>;
+}
+
+const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = async () => {
+  const handleSignUp = async () => {
     try {
-      await auth().signInWithEmailAndPassword(email, password);
-      console.log('User signed in!');
-    } catch (error) {
+      await auth().createUserWithEmailAndPassword(email, password);
+      console.log('User account created & signed in!');
+      navigation.navigate('Login');
+    } catch (error: any) {
       setError(error.message);
     }
   };
@@ -30,7 +36,9 @@ export default function LoginScreen() {
         secureTextEntry
       />
       {error ? <Text>{error}</Text> : null}
-      <Button title="Login" onPress={handleLogin} />
+      <Button title="Sign Up" onPress={handleSignUp} />
     </View>
   );
-}
+};
+
+export default SignUpScreen;

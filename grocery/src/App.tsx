@@ -1,8 +1,8 @@
-import * as React from 'react';
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import SignUpScreen from './SignUpScreen';
-import LoginScreen from './LoginScreen';
+import SignUpScreen from './screens/SignUpScreen';
+import LoginScreen from './screens/LoginScreen';
 import firebase from '@react-native-firebase/app';
 import env from './env';
 

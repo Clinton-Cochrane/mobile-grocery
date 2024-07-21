@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "es6",
     "module": "commonjs",
     "strict": true,
     "jsx": "react-native",
@@ -12,7 +12,8 @@
     "noEmit": true
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "src/env.d.ts"
   ],
   "exclude": [
     "node_modules",
