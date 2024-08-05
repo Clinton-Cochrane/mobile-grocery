@@ -1,14 +1,13 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "main": "dist/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "ts-node src/server.ts",
+    "build": "tsc"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  
   "dependencies": {
     "@react-native-firebase/app": "^20.2.1",
     "@react-native-firebase/auth": "^20.2.1",
@@ -28,6 +27,7 @@
     "@types/node": "^20.14.11",
     "@types/react": "^18.3.3",
     "@types/react-native": "^0.73.0",
-    "typescript": "^5.5.3"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
   }
 }

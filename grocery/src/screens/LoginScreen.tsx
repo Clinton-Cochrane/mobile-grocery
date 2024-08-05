@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, TextInput, Button, Text } from 'react-native';
 import auth from '@react-native-firebase/auth';
+import { SignIn } from '../services/authService';
 import { NavigationProp } from '@react-navigation/native';
 
 interface LoginScreenProps {
@@ -14,7 +15,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
   const handleLogin = async () => {
     try {
-      await auth().signInWithEmailAndPassword(email, password);
+      await SignIn(email, password);
       console.log('User signed in!');
       // Navigate to the main application screen after successful login
     } catch (error: any) {

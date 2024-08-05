@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, TextInput, Button, Text } from 'react-native';
 import auth from '@react-native-firebase/auth';
 import { NavigationProp } from '@react-navigation/native';
+import {SignUp} from '../services/authService'
 
 interface SignUpScreenProps {
   navigation: NavigationProp<any>;
@@ -14,8 +15,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
 
   const handleSignUp = async () => {
     try {
-      await auth().createUserWithEmailAndPassword(email, password);
-      console.log('User account created & signed in!');
+      await SignUp(email, password);
       navigation.navigate('Login');
     } catch (error: any) {
       setError(error.message);
