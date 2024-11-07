@@ -1,26 +1,31 @@
-import React, { useState } from 'react';
-import { View, TextInput, Button, Text } from 'react-native';
-import auth from '@react-native-firebase/auth';
-import { SignIn } from '../services/authService';
-import { NavigationProp } from '@react-navigation/native';
+import { NavigationProp } from "@react-navigation/native";
+import { useState } from "react";
+//import { SignIn } from "../api/api";
+import { TextInput } from "react-native-gesture-handler";
+import { ActivityIndicator, Button, View,Text } from "react-native";
 
 interface LoginScreenProps {
-  navigation: NavigationProp<any>;
+  navigation: NavigationProp<any>
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null > (null);
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    try {
-      await SignIn(email, password);
-      console.log('User signed in!');
-      // Navigate to the main application screen after successful login
-    } catch (error: any) {
-      setError(error.message);
-    }
+    setLoading(true);
+
+   try {
+    //await SignIn(email,password);
+    console.log('User has signed in!')
+    navigation.navigate('Recipes')
+   } catch (error:any) {
+    setError(error.message || 'Login Failed?');
+   }finally{
+    setLoading(false);
+   }
   };
 
   return (
@@ -29,15 +34,22 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         placeholder="Email"
         value={email}
         onChangeText={setEmail}
+        autoCapitalize="none" 
+        keyboardType="email-address"
       />
       <TextInput
         placeholder="Password"
-        value={password}
+        value = {password}
         onChangeText={setPassword}
         secureTextEntry
       />
       {error ? <Text>{error}</Text> : null}
-      <Button title="Login" onPress={handleLogin} />
+      {loading ? <ActivityIndicator/>:(
+        <>
+          <Button title = "Login" onPress = {handleLogin}/>
+          <Button title = "Sign Up" onPress = {() => navigation.navigate('SignUp')}/>
+        </>
+      )}
     </View>
   );
 };
