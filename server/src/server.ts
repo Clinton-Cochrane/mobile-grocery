@@ -3,7 +3,7 @@ import express from "express";
 import * as mongoose from "mongoose";
 import * as bodyParser from "body-parser";
 import cors from "cors";
-import { Request, Response, NextFunction } from "express";
+import { Request, Response } from "express";
 
 dotenv.config();
 
