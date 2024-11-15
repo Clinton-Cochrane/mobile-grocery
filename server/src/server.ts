@@ -4,13 +4,14 @@ import * as mongoose from "mongoose";
 import * as bodyParser from "body-parser";
 import cors from "cors";
 import { Request, Response } from "express";
+import Recipe from "./models/recipe";
 
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 5000;
 
-app.use(cors({ origin: '*' }));
+app.use(cors({ origin: "*" }));
 app.use(bodyParser.json());
 
 if (!process.env.MONGO_URI) {
@@ -25,8 +26,6 @@ mongoose
   )
   .catch((err) => console.error("Could not connect to MongoDB...", err));
 
-import Recipe from "./models/recipe";
-
 app.post("/recipes", async (req: Request, res: Response) => {
   const newRecipe = new Recipe({ ...req.body });
   try {
@@ -39,8 +38,49 @@ app.post("/recipes", async (req: Request, res: Response) => {
 
 app.get("/recipes", async (req: Request, res: Response) => {
   try {
-    const recipes = await Recipe.find();
-    res.status(200).send(recipes);
+    const {
+      page = 1,
+      pageSize = 20,
+      search = "",
+      difficulty,
+      ingredient,
+      currentLetter,
+    } = req.query;
+    const query: any = {};
+
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    //currentLetter
+    if (currentLetter) {
+      query.title = { $regex: `^${currentLetter}`, $options: "i" };
+    }
+
+    //difficulty filter
+    if (difficulty) {
+      query.difficulty = difficulty;
+    }
+
+    // Ingredient filter (check if ingredient exists in the ingredients array)
+    if (ingredient) {
+      query.ingredients = { $in: [ingredient] };
+    }
+
+    const recipes = await Recipe.find(query)
+      .sort({ title: 1 })
+      .skip((+page - 1) * +pageSize)
+      .limit(+pageSize);
+    const totalRecipes = await Recipe.countDocuments(query);
+    res.json({
+      recipes,
+      totalRecipes,
+      totalPages: Math.ceil(totalRecipes / +pageSize),
+      currentPage: +page,
+    });
   } catch (error) {
     res.status(500).send(error);
   }
