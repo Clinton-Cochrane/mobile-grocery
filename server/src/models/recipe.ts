@@ -23,6 +23,15 @@ const recipeSchema = new Schema({
   utensils: { type: String, required: false },
 });
 
+recipeSchema.index({ title: 1 }); // To optimize sorting by title
+recipeSchema.index({ ingredients: 1 }); // For ingredient filtering
+recipeSchema.index({ difficulty: 1 }); // For difficulty filtering
+
+
 const Recipe = mongoose.model("Recipe", recipeSchema);
+Recipe.init().then(() => {
+  console.log("Indexes created successfully");
+});
+
 
 export default Recipe;

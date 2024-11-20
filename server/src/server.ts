@@ -5,11 +5,13 @@ import * as bodyParser from "body-parser";
 import cors from "cors";
 import { Request, Response } from "express";
 import Recipe from "./models/recipe";
+import Redis from "ioredis";
 
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 5000;
+const redis = new Redis(process.env.REDIS_URI || "redis://172.21.251.178:6379");
 
 app.use(cors({ origin: "*" }));
 app.use(bodyParser.json());
@@ -30,56 +32,105 @@ app.post("/recipes", async (req: Request, res: Response) => {
   const newRecipe = new Recipe({ ...req.body });
   try {
     await newRecipe.save();
+    redis.del("recipes:*");
     res.status(201).send(newRecipe);
   } catch (error) {
     res.status(400).send(error);
   }
 });
 
+app.get("/health", async (req, res) => {
+  try {
+    const mongoStatus =
+      mongoose.connection.readyState === 1 ? "Healthy" : "Unhealthy";
+    const redisPing = await redis.ping();
+    const redisStatus = redisPing === "PONG" ? "Healthy" : "Unhealthy";
+
+    res.status(200).json({
+      mongoStatus,
+      redisStatus,
+      uptime: process.uptime(), // Server uptime
+      memoryUsage: process.memoryUsage(),
+    });
+  } catch (error: any) {
+    res
+      .status(500)
+      .json({ error: "Health check failed", details: error.message });
+  }
+});
+
 app.get("/recipes", async (req: Request, res: Response) => {
   try {
-    const {
-      page = 1,
-      pageSize = 20,
-      search = "",
-      difficulty,
-      ingredient,
-      currentLetter,
-    } = req.query;
-    const query: any = {};
+    const page = Number(req.query.page) || 1;
+    const pageSize = Number(req.query.pageSize) || 20;
+    const baseQuery = {
+      ...(req.query.difficulty && { difficulty: req.query.difficulty }),
+      ...(req.query.ingredient && { ingredients: req.query.ingredient }),
+    };
+    const cacheKey = `recipes:page=${page}&size=${pageSize}&query=${JSON.stringify(baseQuery)}`;
+    const cachedData = await redis.get(cacheKey).catch((err) => {
+      console.error("Redis error:", err);
+      return null; // Fallback to fetching from MongoDB
+    });
 
-    if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-      ];
-    }
+     if (cachedData) {
+       console.log("Serving from cache");
+       return res.json(JSON.parse(cachedData));
+     }
 
-    //currentLetter
-    if (currentLetter) {
-      query.title = { $regex: `^${currentLetter}`, $options: "i" };
-    }
+    const lastId = req.query.lastId || null;
+    const currentQuery = {
+      ...baseQuery,
+      ...(lastId && { _id: { $gt: lastId } }),
+    };
+    const results = await Recipe.aggregate([
+      { $match: baseQuery },
+      {
+        $facet: {
+          recipes: [
+            { $match: currentQuery },
+            { $sort: { title: 1 } },
+            { $skip: (page - 1) * pageSize },
+            { $limit: pageSize },
+            {
+              $project: {
+                title: 1,
+                ingredients: 1,
+                utensils: 1,
+                difficulty: 1,
+              },
+            },
+          ],
+          totalCount: [{ $count: "count" }],
+        },
+      },
+    ]);
 
-    //difficulty filter
-    if (difficulty) {
-      query.difficulty = difficulty;
-    }
+    const recipes = results[0]?.recipes || [];
+    const globalTotalRecipes = results[0]?.totalCount[0]?.count || 0;
+    const globalTotalPages = Math.ceil(globalTotalRecipes / pageSize);
+    const lastRecipeId = recipes.length
+      ? recipes[recipes.length - 1]._id
+      : null;
 
-    // Ingredient filter (check if ingredient exists in the ingredients array)
-    if (ingredient) {
-      query.ingredients = { $in: [ingredient] };
-    }
-
-    const recipes = await Recipe.find(query)
-      .sort({ title: 1 })
-      .skip((+page - 1) * +pageSize)
-      .limit(+pageSize);
-    const totalRecipes = await Recipe.countDocuments(query);
+    redis.set(
+      cacheKey,
+      JSON.stringify({
+        recipes,
+        globalTotalRecipes,
+        globalTotalPages,
+        lastRecipeId,
+      }),
+      "EX",
+      3600
+    ); // Cache for 1 hour
     res.json({
       recipes,
-      totalRecipes,
-      totalPages: Math.ceil(totalRecipes / +pageSize),
-      currentPage: +page,
+      globalTotalRecipes,
+      globalTotalPages,
+      currentPage: page,
+      isLastPage: page >= globalTotalPages,
+      lastRecipeId,
     });
   } catch (error) {
     res.status(500).send(error);
@@ -114,6 +165,7 @@ app.put("/recipes/:id", async (req: Request, res: Response) => {
     if (!updatedRecipe) {
       res.status(404).send("Recipe not found");
     } else {
+      await redis.del("recipes:*");
       res.status(200).send(updatedRecipe);
     }
   } catch (error) {
@@ -128,6 +180,7 @@ app.delete("/recipes/:id", async (req: Request, res: Response) => {
     if (!recipe) {
       res.status(404).send("Recipe not found");
     } else {
+      await redis.del("recipes:*");
       res.status(200).send("Recipe deleted");
     }
   } catch (error) {
