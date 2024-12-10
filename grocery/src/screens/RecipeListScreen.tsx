@@ -15,8 +15,7 @@ import {TextInput} from 'react-native-gesture-handler';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {RootStackParamList} from '../navigation/ParamList';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import debounce from 'lodash/debounce';
-import {RouteProp} from '@react-navigation/native';
+
 import RNPickerSelect from 'react-native-picker-select';
 
 const screenHeight = Dimensions.get('window').height;
@@ -92,6 +91,7 @@ const RecipeListScreen: React.FC<RecipeListScreenProps> = ({
 
   useEffect(() => {
     setRecipes([]); // Clear existing recipes when filters or search terms change
+    setPage(0); //reset the page
     fetchRecipes(1);
   }, [searchTerms, difficulty, ingredient]);
 
@@ -141,7 +141,7 @@ const RecipeListScreen: React.FC<RecipeListScreenProps> = ({
       } else {
         updated.add(id);
       }
-      return updated;
+      return new Set(updated);
     });
   };
 
@@ -156,13 +156,17 @@ const RecipeListScreen: React.FC<RecipeListScreenProps> = ({
       toggleExpand,
       handleDelete,
       navigation,
+      selectedRecipes
     }: {
       item: Recipe;
       isExpanded: boolean;
       toggleExpand: () => void;
       handleDelete: (id: string) => void;
       navigation: NavigationProp<any>;
+      selectedRecipes: Set<string>;
     }) => {
+      const isInCart = selectedRecipes.has(item._id);
+
       return (
         <View>
           <View style={[styles.item, isExpanded && styles.expandedItem]}>
@@ -191,11 +195,9 @@ const RecipeListScreen: React.FC<RecipeListScreenProps> = ({
             <View style={styles.iconContainer}>
               <TouchableOpacity onPress={() => toggleSelectRecipe(item._id)}>
                 <Icon
-                  name={
-                    selectedRecipes.has(item._id) ? `edit` : `add-shopping-cart`
-                  }
+                  name={isInCart ? 'remove-shopping-cart' : 'add-shopping-cart'}
                   size={24}
-                  color="gray"
+                  color={isInCart ? 'green' : 'gray'}
                 />
               </TouchableOpacity>
               <TouchableOpacity
@@ -230,10 +232,11 @@ const RecipeListScreen: React.FC<RecipeListScreenProps> = ({
           toggleExpand={() => toggleExpand(item._id)}
           handleDelete={handleDelete}
           navigation={navigation}
+          selectedRecipes={selectedRecipes}
         />
       );
     },
-    [expandedId, navigation],
+    [expandedId, navigation, selectedRecipes],
   );
 
   return (
@@ -291,7 +294,7 @@ const RecipeListScreen: React.FC<RecipeListScreenProps> = ({
             renderItem={renderRecipeItem}
             estimatedItemSize={optimalPageSize}
             keyExtractor={(item, index) => `${item._id}-${index}`}
-            extraData={expandedId}
+            extraData={{expandedId, selectedRecipes}}
             onEndReached={() => {
               loadMoreRecipes();
             }}
