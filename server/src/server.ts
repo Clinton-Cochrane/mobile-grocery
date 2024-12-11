@@ -63,32 +63,32 @@ app.get("/recipes", async (req: Request, res: Response) => {
   try {
     const page = Number(req.query.page) || 1;
     const pageSize = Number(req.query.pageSize) || 20;
+    const searchTerm = typeof req.query.search === 'string' ? req.query.search : '';
     const baseQuery = {
       ...(req.query.difficulty && { difficulty: req.query.difficulty }),
-      ...(req.query.ingredient && { ingredients: req.query.ingredient }),
+      ...(req.query.search && { title: { $regex: new RegExp(searchTerm, 'i') } }),
+
+
     };
     const cacheKey = `recipes:page=${page}&size=${pageSize}&query=${JSON.stringify(baseQuery)}`;
-    const cachedData = await redis.get(cacheKey).catch((err) => {
-      console.error("Redis error:", err);
-      return null; // Fallback to fetching from MongoDB
-    });
+    // const cachedData = await redis.get(cacheKey).catch((err) => {
+    //   console.error("Redis error:", err);
+    //   return null; // Fallback to fetching from MongoDB
+    // });
 
-      if (cachedData) {
-        console.log("Serving from cache");
-        return res.json(JSON.parse(cachedData));
-      }
+    //   if (cachedData) {
+    //     console.log("Serving from cache");
+    //     return res.json(JSON.parse(cachedData));
+    //   }
 
     const lastId = req.query.lastId || null;
-    const currentQuery = {
-      ...baseQuery,
-      ...(lastId && { _id: { $gt: lastId } }),
-    };
+    console.log("Base Query:", baseQuery);
+
     const results = await Recipe.aggregate([
       { $match: baseQuery },
       {
         $facet: {
           recipes: [
-            { $match: currentQuery },
             { $sort: { title: 1 } },
             { $skip: (page - 1) * pageSize },
             { $limit: pageSize },
@@ -114,17 +114,17 @@ app.get("/recipes", async (req: Request, res: Response) => {
       ? recipes[recipes.length - 1]._id
       : null;
 
-    redis.set(
-      cacheKey,
-      JSON.stringify({
-        recipes,
-        globalTotalRecipes,
-        globalTotalPages,
-        lastRecipeId,
-      }),
-      "EX",
-      3600
-    ); // Cache for 1 hour
+    // redis.set(
+    //   cacheKey,
+    //   JSON.stringify({
+    //     recipes,
+    //     globalTotalRecipes,
+    //     globalTotalPages,
+    //     lastRecipeId,
+    //   }),
+    //   "EX",
+    //   3600
+    // ); // Cache for 1 hour
     res.json({
       recipes,
       globalTotalRecipes,

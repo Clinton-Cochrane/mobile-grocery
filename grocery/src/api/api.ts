@@ -25,7 +25,7 @@ interface recipe {
 export const getRecipes = async (
   newPage: number,
   pageSize: number,
-  searchTerms: string[],
+  searchTerm: string,
   difficulty: string,
   ingredient: string,
 ) => {
@@ -34,12 +34,11 @@ export const getRecipes = async (
       params: {
         page: newPage,
         pageSize,
-        search: searchTerms,
+        search: searchTerm,
         difficulty,
         ingredient,
       },
     });
-    console.log(response.data['total time'])
     return response.data;
   } catch (error) {
     console.error("API Error:");

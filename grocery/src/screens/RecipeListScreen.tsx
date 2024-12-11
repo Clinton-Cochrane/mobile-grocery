@@ -17,6 +17,7 @@ import {RootStackParamList} from '../navigation/ParamList';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import RNPickerSelect from 'react-native-picker-select';
+import { debounce } from 'lodash';
 
 const screenHeight = Dimensions.get('window').height;
 const optimalPageSize = Math.floor(screenHeight / 100) * 10;
@@ -49,27 +50,25 @@ const RecipeListScreen: React.FC<RecipeListScreenProps> = ({
 }) => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null); // Tracks expanded items
-  const [multiSelectMode, setMultiSelectMode] = useState(false); // Toggle multi-select mode
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
   const [pageSize] = useState(optimalPageSize);
   const [totalPages, setTotalPages] = useState(1);
-  const [searchTerms, setSearchTerms] = useState<string[]>([]);
   const [difficulty, setDifficulty] = useState('');
-  const [ingredient, setIngredient] = useState('');
+  const [ingredient] = useState('');
   const [filterVisible, setFilterVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [filterHeight] = useState(new Animated.Value(0));
   const [isInitialLoad, setIsInitialLoad] = useState(false);
 
-  const fetchRecipes = async (newPage = 1) => {
+  const fetchRecipes = async (newPage = 1, searchTerm = '') => {
     if (newPage === 1) setIsInitialLoad(true); // For initial load
     setLoading(true);
     try {
       const {recipes: fetchedRecipes, globalTotalPages} = await getRecipes(
         newPage,
         pageSize,
-        searchTerms,
+        searchTerm,
         difficulty,
         ingredient,
       );
@@ -92,8 +91,8 @@ const RecipeListScreen: React.FC<RecipeListScreenProps> = ({
   useEffect(() => {
     setRecipes([]); // Clear existing recipes when filters or search terms change
     setPage(0); //reset the page
-    fetchRecipes(1);
-  }, [searchTerms, difficulty, ingredient]);
+    fetchRecipes(1, search);
+  }, [search, difficulty, ingredient]);
 
   const loadMoreRecipes = async () => {
     if (loading || page >= totalPages) return;
@@ -145,9 +144,32 @@ const RecipeListScreen: React.FC<RecipeListScreenProps> = ({
     });
   };
 
-  const removeSearchTerm = (index: number) => {
-    setSearchTerms(prev => prev.filter((_, i) => i !== index));
+  const toggleFilterVisibility = () => {
+    if (!loading) {
+      setFilterVisible(prev => {
+        Animated.timing(filterHeight, {
+          toValue: prev ? 0 : 150, // Adjust height based on your content
+          duration: 300,
+          useNativeDriver: false, // Height animations need `useNativeDriver: false`
+        }).start();
+        return !prev;
+      });
+    }
   };
+
+  const debouncedFetchRecipes = useCallback(
+    debounce((searchTerm: string) => {
+      fetchRecipes(1, searchTerm);
+    }, 300),
+    []
+  );
+  
+  // Handler for text input
+  const handleSearchChange = (value: string) => {
+    setSearch(value); // Update the search state immediately for the input
+    debouncedFetchRecipes(value); // Call the debounced function for fetching data
+  };
+
 
   const RecipeItem = React.memo(
     ({
@@ -156,7 +178,7 @@ const RecipeListScreen: React.FC<RecipeListScreenProps> = ({
       toggleExpand,
       handleDelete,
       navigation,
-      selectedRecipes
+      selectedRecipes,
     }: {
       item: Recipe;
       isExpanded: boolean;
@@ -183,7 +205,7 @@ const RecipeListScreen: React.FC<RecipeListScreenProps> = ({
                 color="gray"
               />
             </TouchableOpacity>
-            
+
             {isExpanded && (
               <View style={styles.expandedContent}>
                 <Text>Total Time: {item['total time'] || 'N/A'}</Text>
@@ -242,48 +264,34 @@ const RecipeListScreen: React.FC<RecipeListScreenProps> = ({
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        onPress={() => !loading && setFilterVisible(prev => !prev)}>
+      <TouchableOpacity onPress={toggleFilterVisibility}>
         <Text style={styles.filterToggle}>
           {filterVisible ? 'Hide Filters' : 'Show Filters'}
         </Text>
       </TouchableOpacity>
-      {filterVisible && (
-        <Animated.View style={{height: filterHeight}}>
-          {/* Search Bar */}
-          <View style={styles.chipContainer}>
-            {searchTerms.map((term, index) => (
-              <View key={index} style={styles.chip}>
-                <Text style={styles.chipText}>{term}</Text>
-                <TouchableOpacity onPress={() => removeSearchTerm(index)}>
-                  <Icon name="close" size={14} color="fff" />
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
+      <Animated.View style={{height: filterHeight, overflow: 'hidden'}}>
+        {/* Search Bar */}
+        <TextInput
+          placeholder="Search Recipes"
+          value={search}
+          onChangeText={handleSearchChange}
+          style={styles.searchInput}
+          multiline
+        />
 
-          {/* Filters */}
-          <View style={styles.filterInput}>
-            <RNPickerSelect
-              placeholder={{label: 'Filter by Difficulty', value: null}}
-              onValueChange={(value: string) => setDifficulty(value)}
-              items={[
-                {label: 'Easy', value: 'Easy'},
-                {label: 'Medium', value: 'Medium'},
-                {label: 'Hard', value: 'Hard'},
-              ]}
-            />
-          </View>
-          <TextInput
-            placeholder="Filter by Ingredient"
-            value={ingredient}
-            onChangeText={setIngredient}
-            style={styles.filterInput}
+        {/* Filters */}
+        <View style={styles.filterInput}>
+          <RNPickerSelect
+            placeholder={{label: 'Filter by Difficulty', value: null}}
+            onValueChange={(value: string) => setDifficulty(value)}
+            items={[
+              {label: 'Easy', value: 'Easy'},
+              {label: 'Medium', value: 'Medium'},
+              {label: 'Hard', value: 'Hard'},
+            ]}
           />
-
-          {/* Alphabet Filter */}
-        </Animated.View>
-      )}
+        </View>
+      </Animated.View>
 
       {/* Recipes List */}
       {isInitialLoad ? (
@@ -312,7 +320,7 @@ const RecipeListScreen: React.FC<RecipeListScreenProps> = ({
         style={styles.fab}
         onPress={() => navigation.navigate('AddRecipe')}>
         <Icon
-          name={multiSelectMode ? 'share' : 'add'}
+          name={'add'}
           size={30}
           color="white"
         />
