@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {FlashList} from '@shopify/flash-list';
-import {getRecipes, deleteRecipe} from '../api/api';
+import {getRecipes} from '../api/api';
 import {NavigationProp} from '@react-navigation/native';
 import {TextInput} from 'react-native-gesture-handler';
 import {StackNavigationProp} from '@react-navigation/stack';
@@ -101,32 +101,6 @@ const RecipeListScreen: React.FC<RecipeListScreenProps> = ({
     setPage(nextPage);
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteRecipe(id);
-      fetchRecipes();
-    } catch (err) {
-      console.error('Error deleting recipe:', err);
-    }
-  };
-
-  const getAggregatedIngredients = (
-    recipes: Recipe[],
-    selectedRecipes: Set<string>,
-  ) => {
-    const selected = recipes.filter(recipe => selectedRecipes.has(recipe._id));
-    const ingredientMap = new Map();
-
-    selected.forEach(recipe => {
-      recipe.ingredients.forEach(ingredient => {
-        ingredientMap.set(ingredient, (ingredientMap.get(ingredient) || 0) + 1);
-      });
-    });
-
-    return Array.from(ingredientMap.entries()).map(
-      ([ingredient, count]) => `${ingredient} (${count})`,
-    );
-  };
 
   const toggleExpand = (id: string) => {
     setExpandedId(prevID => (prevID === id ? null : id));
@@ -176,14 +150,12 @@ const RecipeListScreen: React.FC<RecipeListScreenProps> = ({
       item,
       isExpanded,
       toggleExpand,
-      handleDelete,
       navigation,
       selectedRecipes,
     }: {
       item: Recipe;
       isExpanded: boolean;
       toggleExpand: () => void;
-      handleDelete: (id: string) => void;
       navigation: NavigationProp<any>;
       selectedRecipes: Set<string>;
     }) => {
@@ -229,9 +201,6 @@ const RecipeListScreen: React.FC<RecipeListScreenProps> = ({
                 }>
                 <Icon name="edit" size={24} color="black" />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleDelete(item._id)}>
-                <Icon name="delete" size={24} color="red" />
-              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -253,7 +222,6 @@ const RecipeListScreen: React.FC<RecipeListScreenProps> = ({
           item={item}
           isExpanded={expandedId === item._id}
           toggleExpand={() => toggleExpand(item._id)}
-          handleDelete={handleDelete}
           navigation={navigation}
           selectedRecipes={selectedRecipes}
         />
