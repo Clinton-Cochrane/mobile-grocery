@@ -39,6 +39,7 @@ export const getRecipes = async (
         ingredient,
       },
     });
+    console.log(response.data['total time'])
     return response.data;
   } catch (error) {
     console.error("API Error:");

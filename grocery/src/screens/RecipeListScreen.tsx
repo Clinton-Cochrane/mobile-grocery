@@ -31,7 +31,7 @@ interface Recipe {
   title: string;
   ingredients: string[];
   instructions: string[];
-  total_time?: string;
+  'total time'?: string;
   utensils?: string;
   difficulty?: string;
 }
@@ -183,9 +183,10 @@ const RecipeListScreen: React.FC<RecipeListScreenProps> = ({
                 color="gray"
               />
             </TouchableOpacity>
+            
             {isExpanded && (
               <View style={styles.expandedContent}>
-                <Text>Total Time: {item.total_time || 'N/A'}</Text>
+                <Text>Total Time: {item['total time'] || 'N/A'}</Text>
                 <Text>Utensils: {item.utensils || 'None'}</Text>
                 <Text># of Ingredients: {item.ingredients.length}</Text>
                 <Text>Difficulty: {item.difficulty || 'Unknown'}</Text>

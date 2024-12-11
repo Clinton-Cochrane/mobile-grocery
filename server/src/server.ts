@@ -73,10 +73,10 @@ app.get("/recipes", async (req: Request, res: Response) => {
       return null; // Fallback to fetching from MongoDB
     });
 
-     if (cachedData) {
-       console.log("Serving from cache");
-       return res.json(JSON.parse(cachedData));
-     }
+      if (cachedData) {
+        console.log("Serving from cache");
+        return res.json(JSON.parse(cachedData));
+      }
 
     const lastId = req.query.lastId || null;
     const currentQuery = {
@@ -98,6 +98,7 @@ app.get("/recipes", async (req: Request, res: Response) => {
                 ingredients: 1,
                 utensils: 1,
                 difficulty: 1,
+                'total time': 1,
               },
             },
           ],
