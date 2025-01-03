@@ -10,7 +10,7 @@ dotenv.config();
 
 // Initialize server and dependencies
 const app = express();
-const port = process.env.PORT || 5000;
+const port = Number(process.env.PORT) || 5000;
 const redis = new Redis(process.env.REDIS_URI || "redis://localhost:6379");
 
 // Middleware
@@ -82,14 +82,22 @@ app.get("/recipes", async (req: Request, res: Response) => {
   const difficulty = typeof req.query.difficulty === "string" ? req.query.difficulty : "";
 
   const query: any = {};
-  if (difficulty) query.difficulty = { $regex: new RegExp(difficulty, "i") };
-  if (search) query.title = { $regex: new RegExp(search, "i") };
 
-  console.log("Constructed Query:", query);
+  if (difficulty) query.difficulty = { $regex: new RegExp(difficulty, "i") };
 
   try {
     const results = await Recipe.aggregate([
-      { $match: query },
+      // Match recipes by difficulty or search
+      {
+        $match: {
+          $or: [
+            { title: { $regex: new RegExp(search, "i") } },
+            { "ingredients.name": { $regex: new RegExp(search, "i") } }, // Match ingredient names
+          ],
+          ...query, // Include difficulty filter
+        },
+      },
+      // Project the fields you want
       {
         $facet: {
           recipes: [
@@ -103,6 +111,7 @@ app.get("/recipes", async (req: Request, res: Response) => {
                 utensils: 1,
                 difficulty: 1,
                 "total time": 1,
+                instructions: 1,
               },
             },
           ],
@@ -121,6 +130,7 @@ app.get("/recipes", async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to fetch recipes", details: (error as any).message });
   }
 });
+
 
 
 
@@ -191,6 +201,6 @@ app.delete("/recipes/:id", async (req: Request, res: Response) => {
 });
 
 // Start Server
-app.listen(port, () => {
+app.listen(port, '0.0.0.0',1,() => {
   console.log(`Server is running on port: ${port}`);
 });

@@ -2,6 +2,12 @@ import * as mongoose from "mongoose";
 
 const Schema = mongoose.Schema;
 
+const ingredientSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  quantity: { type: Number, required: true },
+  measurement: { type: String, required: true }, // Ensure this matches the migration field
+});
+
 const recipeSchema = new Schema({
   title: { type: String, required: true },
   description: { type: String, required: false },
@@ -13,13 +19,7 @@ const recipeSchema = new Schema({
   }, // Matches the "time" object
   difficulty: { type: String, required: false },
   servings: { type: Number, required: false },
-  ingredients: [
-    {
-      name: { type: String, required: true },
-      quantity: { type: Number, required: true },
-      unit: { type: String, required: true },
-    },
-  ], // Matches the "ingredients" array of objects
+  ingredients: [ingredientSchema],
   nutritional_values: {
     calories: { type: Number, required: false },
     fat: { type: Number, required: false },
